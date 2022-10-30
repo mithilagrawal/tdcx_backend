@@ -1,7 +1,9 @@
-const CONFIG = {};
+const config = {};
+const processEnv = process.env;
 
-const procesEnv = process.env;
+//data that define in process Env file
+config['APP_PORT'] = processEnv.APP_PORT;
+config['JWT_SECRET_KEY'] = processEnv.JWT_SECRET_KEY;
 
-CONFIG.APP_PORT = procesEnv.APP_PORT;
 
-module.exports = CONFIG;
+module.exports = config;

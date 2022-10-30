@@ -6,7 +6,6 @@ const express = require('express');
 const cors = require('cors');
 const bodyParser = require('body-parser');
 
-
 const { APP_PORT } = require('./config.js');
 
 
@@ -18,6 +17,7 @@ app.use(cors());
 
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
+
 
 //load the user defined packages
 
