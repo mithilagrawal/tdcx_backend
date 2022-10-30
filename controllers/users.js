@@ -7,7 +7,7 @@ const login = async (req, res) => {
     //validate the name and apiKey
     if (req.body.name !== 'John Doe' || req.body.apiKey !== 'qW1hrT2') {
         return res.status(401).json({
-            msg: '401: Authorization information is missing or invalid.'
+            msg: 'Authorization information is missing or invalid.'
         });
     }
 
@@ -40,7 +40,13 @@ const dashboard = async (req, res) => {
 const createTasks = async (req, res) => {
     if (!('name' in req.body) || !req.body.name) {
         return res.status(400).json({
-            msg: '400: Bad Request.Task details is missing or didn\'t have a name attribute.'
+            msg: 'Bad Request.Task details is missing or didn\'t have a name attribute.'
+        });
+    }
+
+    if (taskDataArray.find(item => ((item.name == req.body.name) && (item.authName == req.authName)))) {
+        return res.status(403).json({
+            msg: `${req.body.name} already exist`
         });
     }
 
@@ -57,17 +63,76 @@ const createTasks = async (req, res) => {
 }
 
 const getTasks = async (req, res) => {
-    return res.status(200).json(taskDataArray.map(item => ({
+    return res.status(200).json(taskDataArray.filter(item => item.authName == req.authName).map(item => ({
         id: item.id,
         name: item.name,
         completed: item.completed
     })));
 }
 
+const editTask = async (req, res) => {
+    if (!('id' in req.params) || !req.params.id) {
+        return res.status(400).json({
+            msg: 'task id is requred'
+        });
+    }
+
+    if ((!('name' in req.body) || !req.body.name) && (!('completed' in req.body) || ([false, true].indexOf(req.body.completed) <= -1))) {
+        return res.status(400).json({
+            msg: 'Bad Request.Task details is missing or didn\'t have a name attribute.'
+        });
+    }
+
+    const taskDataIndex = taskDataArray.findIndex(item => ((item.id == req.params.id) && (item.authName == req.authName)));
+    if (taskDataIndex < 0) {
+        return res.status(404).json({
+            msg: 'Not Found. Task was not found.'
+        });
+    }
+
+    if ('name' in req.body) { taskDataArray[taskDataIndex].name = req.body.name; };
+    if ('completed' in req.body) { taskDataArray[taskDataIndex].completed = req.body.completed; };
+
+    const finalData = JSON.stringify(taskDataArray[taskDataIndex]);
+    delete finalData.authName;
+    return res.status(200).json(finalData);
+}
+
+const deleteTask = async (req, res) => {
+    if (!('id' in req.params) || !req.params.id) {
+        return res.status(404).json({
+            msg: 'Not Found. Task was not found'
+        });
+    }
+
+    const taskDataIndex = taskDataArray.findIndex(item => ((item.id == req.params.id) && (item.authName == req.authName)));
+
+    if (taskDataIndex <= -1) {
+        return res.status(403).json({
+            msg: 'task id is incorrect'
+        });
+    }
+
+    const taskData = taskDataArray[taskDataIndex];
+
+    if (taskData.completed) {
+        return res.status(400).json({
+            msg: 'Bad Request. Task is marked complete, it cannot be deleted.'
+        });
+    }
+
+    taskDataArray.slice(taskDataIndex, 1)
+
+    delete taskData.authName;
+
+    return res.status(200).json(taskData);
+}
 
 module.exports = {
     login,
     dashboard,
     createTasks,
-    getTasks
+    getTasks,
+    editTask,
+    deleteTask
 }
