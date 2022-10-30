@@ -26,14 +26,9 @@ const login = async (req, res) => {
 
 const dashboard = async (req, res) => {
     return res.status(200).json({
-        "tasksCompleted": 10,
-        "totalTasks": 19,
-        "latestTasks": [
-            {
-                "name": "Refactor something",
-                "completed": false
-            }
-        ]
+        "tasksCompleted": taskDataArray.filter(item => item?.completed).length,
+        "totalTasks": taskDataArray.length,
+        "latestTasks": taskDataArray[taskDataArray.length - 1]
     })
 }
 
