@@ -2,21 +2,29 @@ const jwt = require('jsonwebtoken');
 const { JWT_SECRET_KEY } = require("../config");
 
 const taskDataArray = [];
+const userData = [
+    {
+        id: 1,
+        name: 'John Doe',
+        apiKey: 'qW1hrT2'
+    }
+]
 const login = async (req, res) => {
 
     //validate the name and apiKey
-    if (req.body.name !== 'John Doe' || req.body.apiKey !== 'qW1hrT2') {
+    const user = userData.find(item => (item.name == req.body.name) && (item.apiKey == req.body.apiKey));
+    if (!user) {
         return res.status(401).json({
             msg: 'Authorization information is missing or invalid.'
         });
     }
 
     //generate the token
-    const token = jwt.sign({ name: req.body.name }, JWT_SECRET_KEY);
+    const token = jwt.sign({ name: user.name }, JWT_SECRET_KEY);
     return res.status(200).json(
         {
             token: {
-                name: req.body.name,
+                name: user.name,
                 token
             },
             "image": "/images/profile.jpg"
@@ -25,11 +33,12 @@ const login = async (req, res) => {
 }
 
 const dashboard = async (req, res) => {
-    return res.status(200).json({
-        "tasksCompleted": taskDataArray.filter(item => item?.completed).length,
-        "totalTasks": taskDataArray.length,
-        "latestTasks": taskDataArray[taskDataArray.length - 1]
-    })
+    const resData = {
+        "tasksCompleted": taskDataArray.filter(item => (item.authName == req.authName) && item?.completed).length,
+        "totalTasks": taskDataArray.filter(item => (item.authName == req.authName)).length,
+        "latestTasks": taskDataArray.slice(-3).filter(item => (item.authName == req.authName))
+    };
+    return res.status(200).json(resData)
 }
 
 const createTasks = async (req, res) => {
@@ -116,8 +125,7 @@ const deleteTask = async (req, res) => {
         });
     }
 
-    taskDataArray.slice(taskDataIndex, 1)
-
+    taskDataIndex !== -1 && taskDataArray.slice(taskDataIndex, 1)
     delete taskData.authName;
 
     return res.status(200).json(taskData);
