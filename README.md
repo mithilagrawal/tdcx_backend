@@ -35,7 +35,7 @@ apiKey : qW1hrT2
 
 ```
 $ npm install
-$ npm run start
+$ npm start
 ```
 Now, use your client code to make a request to get a JWT from the sample backend that is working on http://localhost:3092.
 
