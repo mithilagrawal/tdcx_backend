@@ -8,5 +8,4 @@ records['users'] = [
     }
 ]
 
-
 module.exports = records;
