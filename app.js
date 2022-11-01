@@ -1,5 +1,7 @@
 //load the .env file into the server environment
-require('dotenv').config();
+if(process.env.NODE_ENV != 'PRODUCTION'){
+    require('dotenv').config();
+}
 
 //load the packages
 const express = require('express');
