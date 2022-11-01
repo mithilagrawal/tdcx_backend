@@ -13,7 +13,7 @@ This repository contains a backend code of assignment given by the TDCX organiza
 Clone the repository from GitHub.
 
 ```
-$ git clone https://mithilauriga@bitbucket.org/mithilauriga/tdcx_backend.git
+$ git clone git@bitbucket.org:mithilauriga/tdcx_frontend.git
 ```
 
 ### frontend url to access the api's
@@ -42,7 +42,7 @@ Now, use your client code to make a request to get a JWT from the sample backend
 
 ## Specification
 
-### /authenticate endpoint
+### /api/ endpoint
 This endpoint is an example of users authentication. It takes user `identity` and responds with unique token.
 
 ### /api documentation
