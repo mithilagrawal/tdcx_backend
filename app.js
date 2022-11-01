@@ -1,5 +1,4 @@
 //load the .env file into the server environment
-console.log(process.env)
 if(process.env.NODE_ENV != 'PRODUCTION'){
     require('dotenv').config();
 }
@@ -27,6 +26,6 @@ app.use(bodyParser.json());
 app.use('/api', require('./controllers/index'));
 
 
-app.listen(APP_PORT, () => {
+app.listen((APP_PORT || 8080), () => {
     console.log(`Server start at ${APP_PORT}`)
 });
