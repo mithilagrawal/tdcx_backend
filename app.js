@@ -1,4 +1,5 @@
 //load the .env file into the server environment
+console.log(process.env)
 if(process.env.NODE_ENV != 'PRODUCTION'){
     require('dotenv').config();
 }
