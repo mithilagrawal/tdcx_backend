@@ -1,5 +1,6 @@
 //load the .env file into the server environment
 if(process.env.NODE_ENV != 'PRODUCTION'){
+    console.log("entered")
     require('dotenv').config();
 }
 
@@ -10,6 +11,8 @@ const bodyParser = require('body-parser');
 
 const { APP_PORT } = require('./config.js');
 
+//load the database
+require('./db');
 
 //load the server configuration
 const app = express();
