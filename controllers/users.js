@@ -36,44 +36,59 @@ const login = async (req, res) => {
         });
     }
 
-    //validate the name and apiKey
-    const user = await Users.findOne({
-        name: req.body.name,
-        apiKey: req.body.apiKey
-    }).lean();
+    try {
+        //validate the name and apiKey
+        const user = await Users.findOne({
+            name: req.body.name,
+            apiKey: req.body.apiKey
+        }).lean();
 
-    if (!user) {
-        return res.status(401).json({
-            msg: 'Authorization information is missing or invalid.'
+        if (!user) {
+            return res.status(401).json({
+                msg: 'Authorization information is missing or invalid.'
+            });
+        }
+
+        //generate the token
+        const token = jwt.sign({ id: user?._id }, JWT_SECRET_KEY);
+        return res.status(200).json(
+            {
+                token: {
+                    name: user.name,
+                    token
+                },
+                "image": "/images/profile.jpg"
+            }
+        );
+    } catch (error) {
+        return res.status(500).json({
+            msg: 'server error'
         });
     }
-
-    //generate the token
-    const token = jwt.sign({ id: user?._id }, JWT_SECRET_KEY);
-    return res.status(200).json(
-        {
-            token: {
-                name: user.name,
-                token
-            },
-            "image": "/images/profile.jpg"
-        }
-    );
 }
 
 const dashboard = async (req, res) => {
-    const taskData = await Tasks.find({
-        authName: req.authName
-    }).lean();
 
-    //generate the response data that needed for dashboard
-    const resData = {
-        "tasksCompleted": taskData.filter(item => item.completed).length,
-        "totalTasks": taskData.length,
-        "latestTasks": taskData.slice(-3)
-    };
+    try {
+        const taskData = await Tasks.find({
+            authName: req.authName
+        }).lean();
 
-    return res.status(200).json(resData)
+        //generate the response data that needed for dashboard
+        const resData = {
+            "tasksCompleted": taskData.filter(item => item.completed).length,
+            "totalTasks": taskData.length,
+            "latestTasks": taskData.slice(-3)
+        };
+
+        return res.status(200).json(resData);
+    } catch (error) {
+        return res.status(500).json({
+            msg: 'server error'
+        });
+    }
+
+
 }
 
 const createTasks = async (req, res) => {
@@ -84,45 +99,57 @@ const createTasks = async (req, res) => {
             msg: 'Bad Request.Task details is missing or didn\'t have a name attribute.'
         });
     }
+    try {
+        //find the task into the database
+        const taskData = await isTaskExist({
+            name: req.body.name,
+            authName: req.authName
+        });
 
-    //find the task into the database
-    const taskData = await isTaskExist({
-        name: req.body.name,
-        authName: req.authName
-    });
+        //if task is already exist then inform to the user that the task is already exist
+        if (taskData?.status) {
+            return res.status(403).json({
+                msg: `${req.body.name} already exist`
+            });
+        }
 
-    //if task is already exist then inform to the user that the task is already exist
-    if (taskData?.status) {
-        return res.status(403).json({
-            msg: `${req.body.name} already exist`
+
+        //insert the record into the database
+        const taskInsert = new Tasks({
+            name: req.body.name.trim(),
+            authName: req.authName
+        });
+
+        //save the info into the mongodb database
+        await taskInsert.save();
+
+        return res.status(200).json({
+            msg: 'OK'
+        });
+    } catch (error) {
+        return res.status(500).json({
+            msg: 'server error'
         });
     }
-
-
-    //insert the record into the database
-    const taskInsert = new Tasks({
-        name: req.body.name.trim(),
-        authName: req.authName
-    });
-
-    //save the info into the mongodb database
-    await taskInsert.save();
-
-    return res.status(200).json({
-        msg: 'OK'
-    });
 }
 
 const getTasks = async (req, res) => {
 
-    const taskData = await Tasks.find({}).lean();
+    try {
+        const taskData = await Tasks.find({}).lean();
 
-    //get all the task
-    return res.status(200).json(taskData.filter(item => item.authName == req.authName).map(item => ({
-        id: item._id,
-        name: item.name,
-        completed: item.completed
-    })));
+        //get all the task
+        return res.status(200).json(taskData.filter(item => item.authName == req.authName).map(item => ({
+            id: item._id,
+            name: item.name,
+            completed: item.completed
+        })));
+    } catch (error) {
+        return res.status(500).json({
+            msg: 'server error'
+        });
+    }
+
 }
 
 const editTask = async (req, res) => {
@@ -157,32 +184,46 @@ const editTask = async (req, res) => {
     const editData = {};
     //if name need to edit then check the requested name is already exist into the record or not
     if ('name' in req.body) {
-        const isNameExist = await isTaskExist({
-            name: req.body.name,
-            authName: req.authName
-        });
-        if (isNameExist?.status && (isNameExist?.data?._id.toString() != req.params.id)) {
-            return res.status(403).json({
-                msg: `${req.body.name} already exist`
+        try {
+            const isNameExist = await isTaskExist({
+                name: req.body.name,
+                authName: req.authName
+            });
+            if (isNameExist?.status && (isNameExist?.data?._id.toString() != req.params.id)) {
+                return res.status(403).json({
+                    msg: `${req.body.name} already exist`
+                });
+            }
+            //edit the name into the record
+            editData['name'] = req.body.name;
+        } catch (error) {
+            return res.status(500).json({
+                msg: 'server error'
             });
         }
-        //edit the name into the record
-        editData['name'] = req.body.name;
+
     };
 
     //mark the task complete if requested
     if ('completed' in req.body) { editData['completed'] = req.body.completed; };
 
-    const updatedTaskData = await Tasks.findOneAndUpdate({
-        _id: ObjectId(req.params.id)
-    }, {
-        $set: editData
-    });
+    try {
+        const updatedTaskData = await Tasks.findOneAndUpdate({
+            _id: ObjectId(req.params.id)
+        }, {
+            $set: editData
+        });
 
-    delete updatedTaskData?._id;
-    delete updatedTaskData?.authName;
+        delete updatedTaskData?._id;
+        delete updatedTaskData?.authName;
 
-    return res.status(200).json(updatedTaskData);
+        return res.status(200).json(updatedTaskData);
+    } catch (error) {
+        return res.status(500).json({
+            msg: 'server error'
+        });
+    }
+
 }
 
 const deleteTask = async (req, res) => {
@@ -213,14 +254,20 @@ const deleteTask = async (req, res) => {
         });
     }
 
-    const deletedTask = await Tasks.findOneAndDelete({
-        _id: ObjectId(req.params.id)
-    });
+    try {
+        const deletedTask = await Tasks.findOneAndDelete({
+            _id: ObjectId(req.params.id)
+        });
 
-    delete deletedTask?._id;
-    delete deletedTask?.authName;
+        delete deletedTask?._id;
+        delete deletedTask?.authName;
 
-    return res.status(200).json(deletedTask);
+        return res.status(200).json(deletedTask);
+    } catch (error) {
+        return res.status(500).json({
+            msg: 'server error'
+        });
+    }
 }
 
 module.exports = {
