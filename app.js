@@ -30,5 +30,5 @@ app.use('/api', require('./controllers/index'));
 
 
 app.listen((PORT || 8080), () => {
-    console.log(`Server start at ${PORT}`)
+    console.log(`Server started at ${PORT}`)
 });
