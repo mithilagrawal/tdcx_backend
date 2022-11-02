@@ -8,6 +8,8 @@ const bodyParser = require('body-parser');
 
 const { APP_PORT } = require('./config.js');
 
+//load the database
+require('./db');
 
 //load the server configuration
 const app = express();

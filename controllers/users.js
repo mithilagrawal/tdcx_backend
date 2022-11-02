@@ -2,14 +2,46 @@ const jwt = require('jsonwebtoken');
 const { JWT_SECRET_KEY } = require("../config");
 const { users } = require('../records/records');
 
-//array that contain task data
-const taskDataArray = [];
+const mongoose = require('mongoose');
+const ObjectId = mongoose.Types.ObjectId;
+const Tasks = mongoose.model('tasks');
+const Users = mongoose.model('users');
 
+
+const isTaskExist = async (e = {}) => {
+    const findCond = {};
+    if ('id' in e) { findCond['_id'] = ObjectId(e.id); };
+    if ('name' in e) { findCond['name'] = e.name };
+    if ('completed' in e) { findCond['completed'] = e.completed }
+    if ('authName' in e) { findCond['authName'] = e.authName }
+
+    const taskData = await Tasks.findOne(findCond).lean();
+
+    if (!taskData) {
+        return {
+            status: false
+        }
+    }
+
+    return {
+        status: true,
+        data: taskData
+    }
+}
 
 const login = async (req, res) => {
 
+    if (!('apiKey' in req.body) || !req.body.apiKey || !('name' in req.body) || !(req.body.name)) {
+        return res.status(401).json({
+            msg: 'Authorization information is missing or invalid.'
+        });
+    }
+
     //validate the name and apiKey
-    const user = users.find(item => (item.name == req.body.name) && (item.apiKey == req.body.apiKey));
+    const user = await Users.findOne({
+        name: req.body.name,
+        apiKey: req.body.apiKey
+    }).lean();
 
     if (!user) {
         return res.status(401).json({
@@ -18,7 +50,7 @@ const login = async (req, res) => {
     }
 
     //generate the token
-    const token = jwt.sign({ name: user.name }, JWT_SECRET_KEY);
+    const token = jwt.sign({ id: user?._id }, JWT_SECRET_KEY);
     return res.status(200).json(
         {
             token: {
@@ -31,12 +63,15 @@ const login = async (req, res) => {
 }
 
 const dashboard = async (req, res) => {
+    const taskData = await Tasks.find({
+        authName: req.authName
+    }).lean();
 
     //generate the response data that needed for dashboard
     const resData = {
-        "tasksCompleted": taskDataArray.filter(item => (item.authName == req.authName) && item?.completed).length,
-        "totalTasks": taskDataArray.filter(item => (item.authName == req.authName)).length,
-        "latestTasks": taskDataArray.slice(-3).filter(item => (item.authName == req.authName))
+        "tasksCompleted": taskData.filter(item => item.completed).length,
+        "totalTasks": taskData.length,
+        "latestTasks": taskData.slice(-3)
     };
 
     return res.status(200).json(resData)
@@ -51,20 +86,28 @@ const createTasks = async (req, res) => {
         });
     }
 
-    //check is task name already exist into the database
-    if (taskDataArray.find(item => ((item.name == req.body.name.trim()) && (item.authName == req.authName)))) {
+    //find the task into the database
+    const taskData = await isTaskExist({
+        name: req.body.name,
+        authName: req.authName
+    });
+
+    //if task is already exist then inform to the user that the task is already exist
+    if (taskData?.status) {
         return res.status(403).json({
             msg: `${req.body.name} already exist`
         });
     }
 
-    //create the entry into the task record
-    taskDataArray.push({
-        id: (Math.random() + 1).toString(36).substring(7),
+
+    //insert the record into the database
+    const taskInsert = new Tasks({
         name: req.body.name.trim(),
-        completed: false,
         authName: req.authName
     });
+
+    //save the info into the mongodb database
+    await taskInsert.save();
 
     return res.status(200).json({
         msg: 'OK'
@@ -73,9 +116,11 @@ const createTasks = async (req, res) => {
 
 const getTasks = async (req, res) => {
 
+    const taskData = await Tasks.find({}).lean();
+
     //get all the task
-    return res.status(200).json(taskDataArray.filter(item => item.authName == req.authName).map(item => ({
-        id: item.id,
+    return res.status(200).json(taskData.filter(item => item.authName == req.authName).map(item => ({
+        id: item._id,
         name: item.name,
         completed: item.completed
     })));
@@ -97,35 +142,48 @@ const editTask = async (req, res) => {
         });
     }
 
-    //fetch the index of the data
-    const taskDataIndex = taskDataArray.findIndex(item => ((item.id == req.params.id) && (item.authName == req.authName)));
-    if (taskDataIndex < 0) {
+    const taskData = await isTaskExist({
+        id: ObjectId(req.params.id)
+    });
+
+    //if task is already exist then inform to the user that the task is already exist
+    if (!taskData?.status) {
         return res.status(404).json({
             msg: 'Not Found. Task was not found.'
         });
     }
 
+
+
+    const editData = {};
     //if name need to edit then check the requested name is already exist into the record or not
     if ('name' in req.body) {
-        const nameData = taskDataArray.find(item => ((item.name == req.body.name) && (item.authName == req.authName)));
-        if (nameData && (taskDataArray[taskDataIndex].id != nameData.id)) {
+        const isNameExist = await isTaskExist({
+            name: req.body.name,
+            authName: req.authName
+        });
+        if (isNameExist?.status) {
             return res.status(403).json({
                 msg: `${req.body.name} already exist`
             });
         }
         //edit the name into the record
-        taskDataArray[taskDataIndex].name = req.body.name;
+        editData['name'] = req.body.name;
     };
 
     //mark the task complete if requested
-    if ('completed' in req.body) { taskDataArray[taskDataIndex].completed = req.body.completed; };
+    if ('completed' in req.body) { editData['completed'] = req.body.completed; };
 
+    const updatedTaskData = await Tasks.findOneAndUpdate({
+        _id: ObjectId(req.params.id)
+    }, {
+        $set: editData
+    });
 
-    const finalData = JSON.stringify(taskDataArray[taskDataIndex]);
+    delete updatedTaskData?._id;
+    delete updatedTaskData?.authName;
 
-    delete finalData.authName;
-
-    return res.status(200).json(finalData);
+    return res.status(200).json(updatedTaskData);
 }
 
 const deleteTask = async (req, res) => {
@@ -137,29 +195,33 @@ const deleteTask = async (req, res) => {
         });
     }
 
-    //fetch the task data index into the record
-    const taskDataIndex = taskDataArray.findIndex(item => ((item.id == req.params.id) && (item.authName == req.authName)));
+    const taskData = await isTaskExist({
+        id: ObjectId(req.params.id)
+    });
 
-    //if no record found the respond to the user accordingly
-    if (taskDataIndex <= -1) {
-        return res.status(403).json({
-            msg: 'task id is incorrect'
+
+    //if task is already exist then inform to the user that the task is already exist
+    if (!taskData?.status) {
+        return res.status(404).json({
+            msg: 'Not Found. Task was not found.'
         });
     }
-
-    const taskData = taskDataArray[taskDataIndex];
 
     //if task is already mark complete then interupt the process
-    if (taskData.completed) {
+    if (taskData?.data?.completed) {
         return res.status(400).json({
-            msg: 'Bad Request. Task is marked complete, it cannot be deleted.'
+            msg: 'Task is marked complete, it cannot be deleted.'
         });
     }
 
-    taskDataIndex !== -1 && taskDataArray.slice(taskDataIndex, 1)
-    delete taskData.authName;
+    const deletedTask = await Tasks.findOneAndDelete({
+        _id: ObjectId(req.params.id)
+    });
 
-    return res.status(200).json(taskData);
+    delete deletedTask?._id;
+    delete deletedTask?.authName;
+
+    return res.status(200).json(deletedTask);
 }
 
 module.exports = {

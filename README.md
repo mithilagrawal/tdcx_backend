@@ -13,7 +13,7 @@ This repository contains a backend code of assignment given by the TDCX organiza
 Clone the repository from GitHub.
 
 ```
-$ git clone git@bitbucket.org:mithilauriga/tdcx_frontend.git
+$ git clone https://mithilauriga@bitbucket.org/mithilauriga/tdcx_backend.git
 ```
 
 ### frontend url to access the api's
