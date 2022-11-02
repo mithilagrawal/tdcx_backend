@@ -162,7 +162,7 @@ const editTask = async (req, res) => {
             name: req.body.name,
             authName: req.authName
         });
-        if (isNameExist?.status) {
+        if (isNameExist?.status && (isNameExist?.data?._id.toString() != req.params.id)) {
             return res.status(403).json({
                 msg: `${req.body.name} already exist`
             });
