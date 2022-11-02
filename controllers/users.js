@@ -1,6 +1,5 @@
 const jwt = require('jsonwebtoken');
 const { JWT_SECRET_KEY } = require("../config");
-const { users } = require('../records/records');
 
 const mongoose = require('mongoose');
 const ObjectId = mongoose.Types.ObjectId;
@@ -146,7 +145,7 @@ const editTask = async (req, res) => {
         id: ObjectId(req.params.id)
     });
 
-    //if task is already exist then inform to the user that the task is already exist
+    //if task is not avail then inform to the user that the task is missing
     if (!taskData?.status) {
         return res.status(404).json({
             msg: 'Not Found. Task was not found.'
@@ -200,7 +199,7 @@ const deleteTask = async (req, res) => {
     });
 
 
-    //if task is already exist then inform to the user that the task is already exist
+    //if task is not avail then inform to the user that the task is missing
     if (!taskData?.status) {
         return res.status(404).json({
             msg: 'Not Found. Task was not found.'
