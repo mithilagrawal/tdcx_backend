@@ -9,7 +9,7 @@ const express = require('express');
 const cors = require('cors');
 const bodyParser = require('body-parser');
 
-const { APP_PORT } = require('./config.js');
+const { PORT } = require('./config.js');
 
 //load the database
 require('./db');
@@ -29,6 +29,6 @@ app.use(bodyParser.json());
 app.use('/api', require('./controllers/index'));
 
 
-app.listen((APP_PORT || 8080), () => {
-    console.log(`Server start at ${APP_PORT}`)
+app.listen((PORT || 8080), () => {
+    console.log(`Server start at ${PORT}`)
 });
